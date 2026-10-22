@@ -1,121 +1,103 @@
-# RAID1 Performance Tuning for NVMe Drives
+# Linux workstation on Intel Z890: NVMe RAID1, Thunderbolt dock, kernel tuning
 
-This repository contains configuration and tuning scripts for optimizing RAID1 performance on systems with NVMe drives. The focus is on maximizing the efficiency of RAID1 arrays using NVMe devices, particularly when configured for intensive workloads like GCC builds, virtualization, Docker, and other high-performance applications.
+Configuration and notes for a mini-ITX Linux workstation built around an Intel Core Ultra 9 285K, a Crucial T700 as the system drive and two Samsung 990 PRO in a Linux software RAID1 (md) for data. The repository started life on an MSI MPG Z890I EDGE TI WIFI under Ubuntu 24.04 and now describes an ASRock Z890I Nova WiFi under Ubuntu 26.04. Both boards are covered; where they differ, the text says which is which.
 
-## Hardware Setup
+Everything here was arrived at by running it. Several of the 2025 settings turned out to be wrong and are documented as such rather than removed, because the reasons are the useful part.
 
-The repository is designed to work with the following hardware configuration:
+## Hardware
 
-- **Motherboard**: MSI MPG Z890I EDGE TI WIFI
-- **CPU**: Intel i9 Ultra 285K (24 cores)
-- **RAM**: 96GB DDR5-6600
-- **Storage Configuration**:
-  - **RAID1 Array**:  
-    - `nvme1n1`: Samsung Electronics NVMe SSD Controller S4LV008 [Pascal]  
-    - `nvme2n1`: Samsung Electronics NVMe SSD Controller S4LV008 [Pascal]  
-  - **Root Storage**:  
-    - `nvme0n1`: Micron/Crucial Technology T700 NVMe SSD
-- **Operating System**: Ubuntu 24.04.01 with kernel 6.8.0-52-generic
+| | 2025 build | 2026 build |
+|---|---|---|
+| Board | MSI MPG Z890I EDGE TI WIFI | ASRock Z890I Nova WiFi (BIOS 3.40) |
+| CPU | Intel Core Ultra 9 285K, 8 P-cores + 16 E-cores | same |
+| RAM | 2 x 48 GB DDR5 | same |
+| System drive | Crucial T700 4 TB, PCIe 5.0 x4 | same, front M.2 slot under the board heatsink |
+| Data mirror | 2 x Samsung 990 PRO 4 TB, PCIe 4.0 x4 | same model, rear M.2 slots, flat heatsinks, 120 mm fan on the rear bracket |
+| Network | onboard 5 GbE Realtek, Sonnet Solo10G (Aquantia AQC107) in the x16 slot | same card; onboard 5 GbE is a Realtek RTL8126 |
+| Thunderbolt | discrete Intel JHL9480 (Thunderbolt 5), firmware connection manager | CPU-integrated Thunderbolt 4, Linux software connection manager |
+| Dock | CalDigit TS5 Plus | same |
+| OS | Ubuntu 24.04, kernel 6.8 | Ubuntu 26.04.1, kernel 7.0 |
 
-## Features and Optimizations
+## What is in the repository
 
-This repository provides a series of optimizations and settings for the RAID1 configuration, including:
-
-- **I/O Scheduler Optimizations**: Tweaks for `mq-deadline` and other performance improvements.
-- **Queue Depth Tuning**: Configuration of the `nr_requests` parameter for better queue depth management.
-- **Volatile Write Cache Management**: Enabling write-back caching on NVMe devices for improved write performance.
-- **Active State Power Management (ASPM)**: Power management settings to enhance device responsiveness and reduce latency.
-- **Sysctl and GRUB Configurations**: Kernel-level tweaks and tuning parameters to optimize system performance.
-- **File System Tuning**: Adjustments for ext4 file systems in RAID1 arrays for better throughput and I/O operations.
-
-## Setup Instructions
-
-### 1. Install Required Tools
-Ensure that the necessary tools for configuring and optimizing NVMe drives and RAID1 arrays are installed on your system:
-
-```bash
-sudo apt update
-sudo apt install nvme-cli smartmontools sysstat
+```
+etc/default/grub                       kernel command line
+etc/fstab                              the mirror's mount line
+etc/mdadm/mdadm.conf                   array definition
+etc/modprobe.d/mdadm.conf              md_mod start_ro
+etc/modprobe.d/nvme.conf               NVMe power-state latency cap
+etc/modules-load.d/sensors.conf        Super I/O sensor driver
+etc/sysctl.d/90-raid-nvme.conf         kernel tuning (replaces the 2025 sysctl.conf)
+etc/systemd/network/10-lan0.link       stable name for the 10G card, by MAC
+etc/systemd/network/10-wan0.link       stable name for the onboard port, by driver
+etc/udev/rules.d/99-nvme-tuning.rules  scheduler and md read-ahead (replaces the 2025 rule)
+etc/udev/rules.d/retired/              the 2025 rule, kept for the record
+caldigit-ts5-plus.md                   the dock on both boards
+docs/board-swap.md                     moving the mirror and the network to a new board
+docs/2025-msi-edge-ti/                 the original tuning paper and sysctl.conf, superseded
+hardware/                              DKMS drivers for the Super I/O chip and the Realtek NIC
 ```
 
-### 2. Apply RAID1 and NVMe Optimizations
+Identifiers in the configuration files (UUIDs, MAC addresses, serial numbers) are placeholders in angle brackets.
 
-To optimize your system's performance with RAID1 and NVMe devices, you will need to configure the following:
+## Kernel command line
 
-- **Tuning Parameters**: The relevant parameters are already defined in `/etc/sysctl.d/99-sysctl.conf`.
-- **RAID1 Optimization**: Apply RAID-specific optimizations using sysctl parameters (e.g., `dev.raid.speed_limit_max`).
-- **NVMe Device Optimization**: Follow the guidelines in `/etc/udev/rules.d/99-nvme-optimization.rules` to adjust device-specific settings like write-back cache and read-ahead buffers.
-
-### 3. Modify GRUB Configuration
-
-The following kernel parameters are essential for optimal system performance with RAID1 and NVMe drives. Ensure that your GRUB configuration file includes these settings:
-
-```bash
-GRUB_CMDLINE_LINUX_DEFAULT="quiet splash intel_pstate=performance pcie_aspm=force"
+```
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash pcie_aspm.policy=performance pcie_port_pm=off kernel_lockdown=none"
 ```
 
-Then update GRUB:
+**`pcie_aspm.policy=performance`, not `pcie_aspm=off` and not `pcie_aspm=force`.** This is the single most consequential line in the repository, and the 2025 version had it wrong twice over.
 
-```bash
-sudo update-grub
+- `pcie_aspm=off` makes the kernel stop advertising ASPM support to the firmware. The ACPI `_OSC` negotiation then fails its prerequisite check, and the kernel never asks for control of native PCIe hotplug, PME or AER at all; the log shows `_OSC: not requesting OS control; OS requires [ExtendedConfig ASPM ClockPM MSI]` and `/sys/bus/pci/slots` stays empty. On a board with CPU-integrated Thunderbolt, Linux manages the tunnels itself and relies on native hotplug to re-enumerate the dock's PCIe devices after it resets the host router at boot. Without hotplug those devices die at every boot. The source is `drivers/acpi/pci_root.c`: `OSC_PCI_ASPM_SUPPORT` is only set when `pcie_aspm_support_enabled()` is true, and the control request is skipped when the required set is incomplete.
+- `pcie_aspm=force` enables ASPM on links whose devices do not claim support and the kernel documentation warns it may lock the system up.
+- `pcie_aspm.policy=performance` keeps every link in L0, which is the behaviour both earlier settings were trying to get, while leaving the negotiation intact. The correct log line is `_OSC: OS now controls [PCIeHotplug SHPCHotplug PME AER PCIeCapability LTR DPC]`.
+
+`pcie_port_pm=off` keeps PCIe ports out of runtime power management. It is harmless on a desktop and belt-and-braces for Thunderbolt docks. `intel_pstate=performance`, present in 2025, is not a value the driver recognises and was dropped; the CPU runs at full performance through the HWP energy-performance preference, which the desktop's power profile sets.
+
+**Do not add `thunderbolt.host_reset=0`.** It stops the kernel from resetting the host router at boot, which does keep firmware-created PCIe tunnels alive, but on the Nova it cost the DisplayPort tunnel to a Thunderbolt monitor. The hotplug fix above makes it unnecessary.
+
+## The mirror
+
+- Created with `mdadm --create --level=1 --metadata=1.2 --bitmap=internal --bitmap-chunk=128M`. The **write-intent bitmap** is the difference between a member that dropped out rejoining in minutes and a full 4 TB copy; a 2025 array created without one needed the full copy, and the source drive hung part-way through it.
+- A new or replaced member gets its partition table copied from the survivor (`sgdisk -R /dev/new /dev/survivor && sgdisk -G /dev/new`) and is added with `mdadm --manage /dev/md0 --add`. Cap the resync with `dev.raid.speed_limit_max` (see the sysctl file); the kernel default of 200 MB/s is slow, the 2025 value of 10 GB/s let the source drive run at 1.3 GB/s until its controller stopped responding.
+- Never `--create --assume-clean` over members that hold data unless both are known identical.
+- `fstab` mounts the filesystem by UUID with `nofail`, so a boot with the array absent still completes. It deliberately has no `x-gvfs-show`: with it, the file manager lists the mirror as an ejectable volume.
+- `mdadm.conf` has `MAILADDR root`. That only helps if local mail is delivered somewhere; on a desktop without an MTA, mdadm's daily degraded-array warning and smartd's temperature warnings go to a `sendmail` that does not exist. Install a relay (msmtp-mta plus bsd-mailx or mailutils) before trusting either.
+
+## udev: what was retired and why
+
+The 2025 rule `99-nvme-optimization.rules` is kept under `etc/udev/rules.d/retired/` and should not be used:
+
+- It ran `setpci` against hard-coded PCI addresses. After a board swap those addresses belonged to other devices, including the 10G card, and it switched ASPM on for them against the kernel's policy.
+- It ran `nvme set-feature -f 0x06 -V 2` on `/dev/nvme1` and `/dev/nvme2`. Kernel NVMe names are assigned in enumeration order and changed between boots on both boards, so the rule hit a different pair of drives each time. Value 2 clears the Write Cache Enable bit, which disables the volatile write cache rather than enabling it.
+- It set `read_ahead_kb` to 2 GB on every NVMe device and on the md device. That is roughly a thousand times the default and amplifies every sequential read.
+
+`99-nvme-tuning.rules` keeps the two things that were defensible: `mq-deadline` on the NVMe namespaces and a 1 MB read-ahead on md0. It matches on device type, never on a name or an address.
+
+## Stable network interface names
+
+With one PCIe NIC and one onboard port, the bus-numbered names (`enp2s0`, `enp130s0`) change with the board. Seven VLANs were bound to one of them. The two `.link` files name the card `lan0` by its MAC, which travels with the card, and the onboard port `wan0` by its driver. NetworkManager connections then point at `lan0` and `wan0` and survive a board change untouched. Install to `/etc/systemd/network/`, run `update-initramfs -u`, re-point the connections with `nmcli con modify`, reboot.
+
+## Kernel tuning
+
+`etc/sysctl.d/90-raid-nvme.conf` replaces the 2025 `/etc/sysctl.conf`. Ubuntu 26.04's procps no longer ships that file; an upgrade renames a modified one to `sysctl.conf.dpkg-bak` and every setting in it silently stops applying. Two 2025 values are intentionally gone: `vm.nr_hugepages=2048` reserved 4 GB for nothing that used it, and `vm.overcommit_memory=1` disables the allocator's sanity check.
+
+## DKMS modules and firmware
+
+- The NCT6687D/NCT6686D Super I/O driver and the Realtek r8126 driver are in `hardware/`. On the Nova the in-tree `r8169` drives the RTL8126, so only the sensor driver is needed there.
+- Modules are signed with a Machine Owner Key. The key lives in the board's NVRAM, so a board swap means either enrolling it again or running with Secure Boot off.
+- A release upgrade that keeps the same kernel version string (24.04's HWE 7.0.0-38 to 26.04's 7.0.0-38) does not trigger a DKMS rebuild, yet the modules fail to load with `disagrees about version of symbol module_layout`. Rebuild by hand: `dkms remove <module>/<version> -k $(uname -r)` then `dkms install`.
+
+## Verifying a boot
+
 ```
-
-### 4. Enable/Modify udev Rules
-
-Ensure that udev rules are properly set up to automatically adjust NVMe and RAID1 settings at boot:
-
-```bash
-sudo cp 99-nvme-optimization.rules /etc/udev/rules.d/
+grep -E '_OSC: OS now controls' <(journalctl -k -b)     # must list PCIeHotplug
+ls /sys/bus/pci/slots                                   # must not be empty
+cat /proc/mdstat                                        # [UU], bitmap line present
+findmnt /volume1
+ip -br link | grep -E '^(lan0|wan0)'
 ```
-
-After modifying or adding new udev rules, reload the udev rules:
-
-```bash
-sudo udevadm control --reload-rules
-```
-
-### 5. Verify Changes
-
-Once all optimizations are applied, it's important to verify the changes:
-
-- **Check NVMe Settings**:  
-  Verify that the NVMe settings are correctly applied:
-  ```bash
-  sudo nvme get-feature -f 0x06 /dev/nvme1
-  sudo nvme get-feature -f 0x06 /dev/nvme2
-  ```
-
-- **Check RAID1 Settings**:  
-  Make sure that the RAID1 settings are as expected:
-  ```bash
-  sudo mdadm --detail /dev/md0
-  ```
-
-## Performance Testing
-
-Use tools like `fio` to test the impact of the optimizations:
-
-1. **Sequential Read/Write Test**:
-   ```bash
-   sudo fio --name=seq_read --directory=/volume1 --filename=fio_testfile --rw=read --bs=1M --size=4G --numjobs=4 --iodepth=32 --runtime=60 --group_reporting
-   ```
-
-2. **Random Read/Write Test**:
-   ```bash
-   sudo fio --name=rand_write --directory=/volume1 --filename=fio_testfile --rw=randwrite --bs=4K --size=4G --numjobs=4 --iodepth=32 --runtime=60 --group_reporting
-   ```
-
-## Conclusion
-
-This repository provides a comprehensive set of optimizations and configurations aimed at improving the performance of RAID1 arrays with NVMe devices. By carefully adjusting kernel parameters, NVMe settings, and utilizing tools like `fio`, you can achieve significant improvements in throughput and I/O performance for high-demand workloads.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-
-### Customization Notes:
-
-1. **Hardware Configuration**: Ensure that the specifics of your hardware setup (such as motherboard model, CPU, and storage) are correctly reflected.
-2. **Performance Testing**: Depending on your workload, the `fio` parameters in the "Performance Testing" section may need to be adjusted to better reflect your use case.
-3. **Other Configuration Files**: If additional configuration files or scripts are required (e.g., for RAID management), provide further details in the repository.
+MIT, see [LICENSE](LICENSE).

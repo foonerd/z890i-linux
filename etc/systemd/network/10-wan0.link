@@ -1,0 +1,10 @@
+# Onboard Realtek 5 GbE port: the WAN side.
+# Matched by driver because the onboard MAC changes with the board.
+# MSI Z890I EDGE TI: Killer E5000 (r8169). ASRock Z890I Nova WiFi: RTL8126 (r8169; r8126 if the DKMS driver is installed and binds first).
+# For a board whose onboard port is not Realtek, replace the Driver= line (ethtool -i <interface> shows the driver).
+[Match]
+Driver=r8169 r8126
+Type=ether
+
+[Link]
+Name=wan0

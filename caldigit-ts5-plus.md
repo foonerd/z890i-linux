@@ -1,215 +1,100 @@
-# CalDigit TS5 Plus Thunderbolt 5 Dock - Linux Setup
+# CalDigit TS5 Plus on Linux, on two Z890 boards
 
-Configuration guide for CalDigit TS5 Plus with MSI MPG Z890I EDGE TI WIFI on Ubuntu 24.04.
+The same dock behaves differently on the two boards in this repository, because the two boards manage Thunderbolt differently:
 
-## Hardware Overview
+| | MSI MPG Z890I EDGE TI WIFI | ASRock Z890I Nova WiFi |
+|---|---|---|
+| Thunderbolt host | discrete Intel JHL9480 (Thunderbolt 5) | CPU-integrated Thunderbolt 4 |
+| Who creates the tunnels | the controller's own firmware ("Firmware CM") | the Linux `thunderbolt` driver ("software CM") |
+| PCIe devices in the dock at boot | brought up by firmware, stay up | brought up by firmware, torn down when Linux takes over, must be re-enumerated by native PCIe hotplug |
+| USB 2.0 devices on the dock's Thunderbolt-side ports | work | do not enumerate with BIOS 3.40 (see below) |
 
-- **Dock**: CalDigit TS5 Plus (Thunderbolt 5, 140W)
-- **Motherboard**: MSI MPG Z890I EDGE TI WIFI
-- **CPU**: Intel Core Ultra 9 285K (Arrow Lake)
-- **Thunderbolt**: Integrated Thunderbolt 4 (40 Gb/s) from CPU
+The dock internals matter for the second table, so first the layout.
 
-## Default State Issues
+## What is inside the dock
 
-Out of the box with default BIOS settings, the following problems occur:
+From a teardown and from the USB and PCI trees on Linux:
 
-| Component | Status | Issue |
-|-----------|--------|-------|
-| Thunderbolt connectivity | Working | 40 Gb/s link established |
-| Rear USB-C ports | Working | USB tunneling via Thunderbolt |
-| Front USB-C port | Working | USB tunneling via Thunderbolt |
-| DisplayPort outputs | Working | DP tunneling via Thunderbolt |
-| 10GbE Ethernet | Working | r8152 driver |
-| Audio (3.5mm jacks) | Working | USB audio class |
-| SD/microSD readers | Not Working | Requires firmware update |
-| Front USB-A port | Not Working | Requires BIOS change for PCIe tunneling |
+- An Intel JHL9480 Thunderbolt 5 controller with a built-in USB 3 hub. The three rear Thunderbolt downstream ports and the front hub (Parade PS5512: two front USB-C, front USB-A) hang off this hub. USB 3 traffic to these ports is tunnelled over Thunderbolt; **USB 2.0 traffic is not tunnelled**, it rides the D+/D- wires of the cable to the host's own USB 2.0 controller.
+- An ASMedia ASM3142 USB controller on a PCIe tunnel, feeding two ASMedia ASM2074 hubs that serve the rear USB-A and the non-Thunderbolt rear USB-C ports. On Linux these appear as the dock's "USB 3 Hub - B/C" and "USB 2 Hub - B/C" on a separate xHCI bus. USB 2.0 for these ports is handled inside the dock.
+- A Marvell/Aquantia AQC113 10 GbE controller on the same PCIe tunnel (`atlantic` driver). The 2025 version of this page attributed the 10 GbE port to `r8152`; that driver belongs to a USB 2.5 GbE adapter, not to the dock.
+- Card readers on USB (Genesys GL3231S), audio on USB (C-Media CM6646).
 
-## Firmware Update
+## MSI Z890I EDGE TI (discrete JHL9480)
 
-The SD/microSD card readers require a firmware update to function on Linux.
-
-### Prerequisites
-
-- Windows machine or VM with Thunderbolt
-- CalDigit Docking Station Updater from [CalDigit Support](https://www.caldigit.com/support/)
-
-### Procedure
-
-1. Download CalDigit Docking Station Updater for Windows
-2. Connect TS5 Plus to Windows machine via Thunderbolt
-3. Run updater - it will detect the dock and available firmware
-4. Apply all available updates (dock firmware + card reader firmware)
-5. Wait for completion - dock will reboot automatically
-
-### Verification (Linux)
-
-After firmware update, insert an SD or microSD card and check dmesg:
-
-```
-dmesg | tail -20
-```
-
-Expected output:
-```
-usb-storage 2-1.4.3:1.0: USB Mass Storage device detected
-scsi 4:0:0:0: Direct-Access     CalDigit TS5+ Card Reader 0002 PQ: 0 ANSI: 6
-scsi 4:0:0:1: Direct-Access     CalDigit TS5+ Card Reader 0002 PQ: 0 ANSI: 6
-```
-
-Both SD and microSD slots appear as separate SCSI devices (sda, sdb).
-
-## BIOS Configuration
-
-The front USB-A port on the TS5 Plus uses an ASMedia ASM2142 USB 3.1 controller connected via PCIe tunneling over Thunderbolt. By default, PCIe tunneling fails to initialize.
-
-### Symptom
-
-```
-lspci -s 06:00.0 -vvv
-```
-
-Shows:
-```
-!!! Unknown header type 7f
-```
-
-This indicates PCIe configuration space cannot be read - the tunnel is not established.
-
-### Required BIOS Changes
-
-Enter BIOS (Delete key at POST) and navigate to:
-
-**Advanced -> Thunderbolt(TM) Configuration**
+Out of the box the dock's PCIe-attached devices (the ASMedia controller, the 10 GbE) did not initialise: `lspci -s 06:00.0 -vvv` showed `!!! Unknown header type 7f`. The fix was in the firmware, under **Advanced -> Thunderbolt(TM) Configuration**:
 
 | Setting | Default | Required |
-|---------|---------|----------|
+|---|---|---|
 | USB4 CM Mode | Software/Auto | **Firmware** |
+| PCIE Tunneling over USB4 | Enabled | Enabled |
+| Integrated Thunderbolt(TM) Support | Enabled | Enabled |
+| Discrete Thunderbolt(TM) Support | Disabled | Disabled |
 
-This is the critical setting. The others below were already correct by default but are listed for reference.
+and under its Integrated Thunderbolt sub-menu: OS Native Resource Balance Disabled, ITBT RTD3 Disabled, both ITBT root ports Enabled, Extra Bus Reserved 56, Reserved Memory 512, Memory Alignment 25, Reserved PMemory 32768, PMemory Alignment 28.
 
-### Full Thunderbolt Configuration Reference
+With the firmware connection manager the controller's firmware creates every tunnel before the kernel starts and keeps them; the Linux driver only observes. A full power cycle, not a reboot, is needed after changing the mode. The SD and microSD readers also needed a dock firmware update, which CalDigit only provides as a Windows updater; after it, both slots appear as `CalDigit TS5+ Card Reader` SCSI devices.
 
-**Advanced -> Thunderbolt(TM) Configuration**
+Check: `cat /sys/bus/thunderbolt/devices/domain0/security` is `none` or `user`, never `nopcie`; `lspci -s 06:00.0 -vvv` shows `Mem+ BusMaster+` and `Kernel driver in use: xhci_hcd`.
 
-| Setting | Value |
-|---------|-------|
-| PCIE Tunneling over USB4 | Enabled |
-| USB4 CM Mode | **Firmware** |
-| Integrated Thunderbolt(TM) Support | Enabled |
-| Discrete Thunderbolt(TM) Support | Disabled |
+## ASRock Z890I Nova WiFi (integrated Thunderbolt 4)
 
-**Advanced -> Thunderbolt(TM) Configuration -> Integrated Thunderbolt(TM) Configuration**
+The Nova's firmware has no connection-manager mode switch; its Thunderbolt menu (guide section 3.4.4) offers PCIE Tunneling over USB4, Integrated Thunderbolt Enable, Discrete Thunderbolt Enable and a USB4 Host Router Class Code. The kernel's software connection manager is in charge. Three things follow.
 
-| Setting | Value |
-|---------|-------|
-| OS Native Resource Balance | Disabled |
-| ITBT RTD3 | Disabled |
-| ITBT Root Port 0 | Enabled |
-| ITBT Root Port 1 | Enabled |
-| Extra Bus Reserved | 56 |
-| Reserved Memory | 512 |
-| Memory Alignment | 25 |
-| Reserved PMemory | 32768 |
-| PMemory Alignment | 28 |
+### 1. Native PCIe hotplug must be in the operating system's hands
 
-### Why USB4 CM Mode Matters
-
-CM = Connection Manager. Controls who creates Thunderbolt/USB4 tunnels:
-
-- **Firmware**: Intel Thunderbolt firmware creates tunnels at boot before OS loads. PCIe devices appear automatically.
-- **Software**: OS kernel driver creates tunnels. Linux's software CM defaults to "user" security level, which blocks PCIe tunneling until manual authorization.
-
-For Linux with PCIe tunneled devices (like the TS5 Plus front USB-A port), Firmware mode is required.
-
-## Post-Configuration Verification
-
-After saving BIOS changes, perform a full power cycle (shutdown, wait 10 seconds, power on).
-
-### Check Thunderbolt Security Level
+At boot the firmware has already enumerated the dock's PCIe devices. When the `thunderbolt` driver loads it resets the host router (`host_reset`, default on since kernel 6.8.8) and builds its own tunnels. The devices the firmware brought up lose their link mid-probe:
 
 ```
-cat /sys/bus/thunderbolt/devices/domain0/security
+[4.922] usb usb4: xHCI Host Controller, SerialNumber: 0000:06:00.0
+[4.925] ACPI: bus type thunderbolt registered
+[4.926] xhci_hcd 0000:06:00.0: HC died; cleaning up
+[4.927] atlantic 0000:07:00.0: Unable to change power state from D3cold to D0, device inaccessible
 ```
 
-Should show `none` or `user`. Must NOT show `nopcie`.
+They come back only if the kernel owns native PCIe hotplug on the root port. With `pcie_aspm=off` on the kernel command line it does not, because the `_OSC` negotiation requires ASPM support to be advertised before any control is requested (see the README). The combination that works:
 
-### Check ASMedia Controller
+- kernel: `pcie_aspm.policy=performance` instead of `pcie_aspm=off`;
+- firmware, **Advanced -> Chipset Configuration -> PCI Express Native Control: Enabled**. ASRock's description, "enhanced PCI Express power saving in OS", is misleading; this is the switch that lets the firmware grant native hotplug, PME and AER to the OS.
+
+Verified state: `journalctl -k -b | grep '_OSC: OS now controls'` lists `PCIeHotplug`, `/sys/bus/pci/slots` has entries for the Thunderbolt root ports and the dock's bridges, and both `06:00.0` (xhci_hcd) and `07:00.0` (atlantic) have drivers bound. A single `HC died` line may still appear at the moment of the host reset; the device is re-probed afterwards. Nine non-fatal AER "ACSViol" errors on the Thunderbolt root port during that same second are the re-enumeration and are recovered.
+
+What did **not** help, tried and reverted: `pcie_port_pm=off` alone, disabling ASPM and L1 substates in the firmware, a udev rule setting `power/control=on` on the bridges (it runs after the failure), and `thunderbolt.host_reset=0`, which kept the dock's PCIe devices alive but took the picture away from a Thunderbolt-attached Dell U2724DE. Do not use it on this board.
+
+### 2. USB 2.0 devices on the Thunderbolt-side ports do not enumerate
+
+With BIOS 3.40, no USB 2.0 device ever appeared behind the dock's front hub or its rear Thunderbolt downstream ports, on any boot, while USB 3 devices in the same ports worked. The Thunderbolt USB controller's USB 2.0 root port (`usb1` on `00:0d.0`) never saw a connect, and the dock's USB 2.0 hub half for that path was absent. USB 2.0 is carried on the cable's D+/D- pair to the host's USB 2.0 PHY, and the routing of that pair for the Type-C ports is done by the board's PD controller and EC firmware. The kernel cannot intervene: the firmware exposes no UCSI device (`PNP0CA0`) and no Intel PMC mux device the kernel's drivers could bind to; `/sys/class/typec` does not exist.
+
+Workaround: put USB 2.0 devices, or a hub that carries them, on the dock's **rear USB-A** ports (or its non-Thunderbolt rear USB-C). Those are on the ASM3142 and get their USB 2.0 inside the dock. A Stream Deck XL moved from a rear Thunderbolt port to a rear USB-A port enumerated immediately.
+
+A USB 2.0 device plugged straight into the board's own Thunderbolt ports is the test that separates a dock-specific case from a board-wide one; on this system it has not been done yet.
+
+### 3. Firmware settings that are relevant, from the ASRock guide
+
+| Menu (Advanced Mode) | Setting | Value |
+|---|---|---|
+| Advanced > Intel(R) Thunderbolt | PCIE Tunneling over USB4 | Enabled |
+| | Integrated Thunderbolt(TM) Enable | Enabled |
+| | Discrete Thunderbolt(TM) Enable | Disabled |
+| | USB4 Host Router Class Code | Auto |
+| Advanced > Chipset Configuration | PCI Express Native Control | **Enabled** |
+| | PCIE ASPM Support, PCH PCIE ASPM Support, DMI ASPM | Disabled (matches the kernel policy; not what fixes the dock) |
+| | Re-Size BAR Support | Enabled |
+| | Deep Sleep | Disabled |
+| Security | Secure Boot | Disabled, or enrol the DKMS signing key |
+
+## Checking a boot
 
 ```
-lspci -s 06:00.0 -vvv
+journalctl -k -b | grep -E '_OSC: OS now controls|HC died|Boot code hanged'
+ls /sys/bus/pci/slots
+lsusb -t          # the dock's B and C hubs appear on their own xHCI buses; A on the Thunderbolt USB tunnel
+boltctl list      # dock and any Thunderbolt monitor "authorized"
 ```
-
-Should show:
-```
-06:00.0 USB controller: ASMedia Technology Inc. ASM2142/ASM3142 USB 3.1 Host Controller
-    Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- ...
-    Kernel driver in use: xhci_hcd
-```
-
-Key indicators:
-- `Mem+` and `BusMaster+` (not `Mem-` and `BusMaster-`)
-- `Kernel driver in use: xhci_hcd`
-- No "Unknown header type 7f" error
-
-### Test Front USB-A Port
-
-Plug a USB device into the front USB-A port:
-
-```
-dmesg -w
-```
-
-Should show device enumeration on the ASMedia controller (typically Bus 004).
-
-### Full USB Tree
-
-```
-lsusb -t
-```
-
-The ASMedia controller appears as a separate bus with its own hub hierarchy.
-
-## Working Configuration Summary
-
-With firmware updated and BIOS configured:
-
-| Component | Status | Bus/Driver |
-|-----------|--------|------------|
-| Rear USB-C (x2) | Working | Thunderbolt USB tunneling |
-| Front USB-C | Working | Thunderbolt USB tunneling |
-| Front USB-A | Working | ASMedia xhci_hcd (PCIe tunneling) |
-| DisplayPort (x3) | Working | Thunderbolt DP tunneling |
-| SD Card Reader | Working | usb-storage |
-| microSD Card Reader | Working | usb-storage |
-| 10GbE Ethernet | Working | r8152 |
-| 3.5mm Audio In/Out | Working | snd-usb-audio |
-
-## Troubleshooting
-
-### PCIe Tunneling Still Fails
-
-If ASMedia controller still shows errors after BIOS changes:
-
-1. Verify USB4 CM Mode is set to Firmware (not Auto or Software)
-2. Full power cycle - not just reboot
-3. Try different Thunderbolt port on motherboard
-4. Check `dmesg | grep -i thunder` for errors
-
-### Card Readers Not Detected
-
-1. Verify firmware was updated (requires Windows)
-2. Insert a card and check `dmesg | tail -20` for "CalDigit TS5+ Card Reader"
-3. Ensure cards are inserted correctly (readers are spring-loaded eject)
-
-### Intermittent Disconnects
-
-If devices disconnect randomly:
-1. Verify ITBT RTD3 is Disabled
-2. Check cable quality - use Thunderbolt certified cable
-3. Ensure adequate power to dock (140W adapter)
 
 ## References
 
-- [CalDigit TS5 Plus Specifications](https://www.caldigit.com/thunderbolt-5-dock/)
-- [Linux Kernel Thunderbolt Documentation](https://docs.kernel.org/admin-guide/thunderbolt.html)
-- [Intel 800 Series BIOS User Guide](https://www.msi.com)
+- [Linux kernel Thunderbolt/USB4 documentation](https://docs.kernel.org/admin-guide/thunderbolt.html)
+- [Kernel source: `_OSC` negotiation in drivers/acpi/pci_root.c](https://github.com/torvalds/linux/blob/master/drivers/acpi/pci_root.c)
+- [ChargerLab teardown of the TS5 Plus](https://www.chargerlab.com/teardown-of-caldigit-ts5-plus-thunderbolt-5-dock/)
+- [CalDigit TS5 Plus](https://www.caldigit.com/thunderbolt-5-dock/)

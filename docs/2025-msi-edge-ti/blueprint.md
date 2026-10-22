@@ -1,3 +1,5 @@
+> **Superseded.** This paper describes the 2025 configuration on the MSI MPG Z890I EDGE TI WIFI under Ubuntu 24.04. Several of its settings were later found to be wrong and are documented as such in the repository README: `pcie_aspm=force` on the kernel line, the udev rule's hard-coded PCI addresses and device names, the write-cache feature value that disables the cache, the 2 GB read-ahead, and `vm.nr_hugepages`. The paper also states that a write-intent bitmap was enabled; the array it describes had none. It is kept as the record of where the repository started.
+
 ### Technical Paper: Optimizing RAID1 Performance on a High-Performance System
 
 #### **1. Introduction**

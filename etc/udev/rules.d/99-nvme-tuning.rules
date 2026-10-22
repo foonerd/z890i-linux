@@ -1,0 +1,6 @@
+# Replaces 99-nvme-optimization.rules (retired 2026-10-20, kept under retired/ in this repository).
+# Nothing here is bound to a PCI address or to an nvmeN name, both of which change between boards and boots.
+# Scheduler: mq-deadline on the NVMe namespaces (whole disks only; partitions have no scheduler).
+ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="nvme*", ENV{DEVTYPE}=="disk", ATTR{queue/scheduler}="mq-deadline"
+# Read-ahead on the mirror: 1 MB (was 2 GB).
+ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="md*", ENV{DEVTYPE}=="disk", ATTR{queue/read_ahead_kb}="1024"

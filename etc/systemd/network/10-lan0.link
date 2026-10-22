@@ -1,0 +1,8 @@
+# PCIe network card (Sonnet Solo10G, Aquantia AQC107): the LAN trunk carrying the VLANs.
+# Matched by the card's own MAC address, which travels with the card between boards.
+[Match]
+MACAddress=<mac-address-of-the-card>
+Type=ether
+
+[Link]
+Name=lan0
