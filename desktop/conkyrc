@@ -1,0 +1,117 @@
+conky.config = {
+	update_interval = 1,
+	cpu_avg_samples = 2,
+	net_avg_samples = 2,
+	out_to_console = false,
+	override_utf8_locale = true,
+	double_buffer = true,
+	no_buffers = true,
+	text_buffer_size = 32768,
+	imlib_cache_size = 0,
+	own_window = true,
+	own_window_type = 'normal',
+	own_window_argb_visual = true,
+	own_window_argb_value = 150,
+	own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
+	border_inner_margin = 5,
+	border_outer_margin = 0,
+	xinerama_head = 1,
+	alignment = 'bottom_right',
+	gap_x = 0,
+	gap_y = 0,
+	draw_shades = false,
+	draw_outline = false,
+	draw_borders = false,
+	draw_blended = false,
+	draw_graph_borders = false,
+	use_xft = true,
+	font = 'Ubuntu Mono:size=14',
+	xftalpha = 0.8,
+	uppercase = false,
+	default_color = 'white',
+	own_window_colour = '#000000',
+	minimum_width = 315, minimum_height = 0,
+	alignment = 'top_right',
+};
+
+conky.text = [[
+${time %H:%M:%S}${alignr}${time %d-%m-%y}
+${voffset -16}${font sans-serif:bold:size=20}${alignc}${time %H:%M}${font}
+${voffset 4}${alignc}${time %A %B %d, %Y}
+${font}${voffset -4}
+${font sans-serif:bold:size=12}SYSTEM ${hr 2}
+${font sans-serif:normal:size=8}$sysname $kernel $alignr $machine
+Host:$alignr$nodename
+Uptime:$alignr$uptime
+File System: $alignr${fs_type}
+Processes: $alignr ${execi 1000 ps aux | wc -l}
+
+${font sans-serif:bold:size=12}CPU ${hr 2}
+${font sans-serif:normal:size=8}${execi 1000 grep model /proc/cpuinfo | cut -d : -f2 | tail -1 | sed 's/\s//'}
+${font sans-serif:normal:size=8}
+Core 01: ${cpu cpu1}% $alignr ${cpubar cpu1 4,190} $alignr ${exec sensors|grep "Core 0:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 02: ${cpu cpu2}% $alignr ${cpubar cpu2 4,190} $alignr ${exec sensors|grep "Core 4:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 03: ${cpu cpu3}% $alignr ${cpubar cpu3 4,190} $alignr ${exec sensors|grep "Core 8:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 04: ${cpu cpu4}% $alignr ${cpubar cpu4 4,190} $alignr ${exec sensors|grep "Core 9:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 05: ${cpu cpu5}% $alignr ${cpubar cpu5 4,190} $alignr ${exec sensors|grep "Core 10:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 06: ${cpu cpu6}% $alignr ${cpubar cpu6 4,190} $alignr ${exec sensors|grep "Core 11:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 07: ${cpu cpu7}% $alignr ${cpubar cpu7 4,190} $alignr ${exec sensors|grep "Core 12:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 08: ${cpu cpu8}% $alignr ${cpubar cpu8 4,190} $alignr ${exec sensors|grep "Core 13:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 09: ${cpu cpu9}% $alignr ${cpubar cpu9 4,190} $alignr ${exec sensors|grep "Core 14:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 10: ${cpu cpu10}% $alignr ${cpubar cpu10 4,190} $alignr ${exec sensors|grep "Core 15:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 11: ${cpu cpu11}% $alignr ${cpubar cpu11 4,190} $alignr ${exec sensors|grep "Core 16:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 12: ${cpu cpu12}% $alignr ${cpubar cpu12 4,190} $alignr ${exec sensors|grep "Core 20:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 13: ${cpu cpu13}% $alignr ${cpubar cpu13 4,190} $alignr ${exec sensors|grep "Core 24:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 14: ${cpu cpu14}% $alignr ${cpubar cpu14 4,190} $alignr ${exec sensors|grep "Core 28:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 15: ${cpu cpu15}% $alignr ${cpubar cpu15 4,190} $alignr ${exec sensors|grep "Core 32:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 16: ${cpu cpu16}% $alignr ${cpubar cpu16 4,190} $alignr ${exec sensors|grep "Core 33:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 17: ${cpu cpu17}% $alignr ${cpubar cpu17 4,190} $alignr ${exec sensors|grep "Core 34:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 18: ${cpu cpu18}% $alignr ${cpubar cpu18 4,190} $alignr ${exec sensors|grep "Core 35:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 19: ${cpu cpu19}% $alignr ${cpubar cpu19 4,190} $alignr ${exec sensors|grep "Core 36:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 20: ${cpu cpu20}% $alignr ${cpubar cpu20 4,190} $alignr ${exec sensors|grep "Core 37:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 21: ${cpu cpu21}% $alignr ${cpubar cpu21 4,190} $alignr ${exec sensors|grep "Core 38:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 22: ${cpu cpu22}% $alignr ${cpubar cpu22 4,190} $alignr ${exec sensors|grep "Core 39:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 23: ${cpu cpu23}% $alignr ${cpubar cpu23 4,190} $alignr ${exec sensors|grep "Core 40:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+Core 24: ${cpu cpu24}% $alignr ${cpubar cpu24 4,190} $alignr ${exec sensors|grep "Core 44:" | cut -d ':' -f2 | tr -s ' ' | cut -d '(' -f1}
+
+${font sans-serif:bold:size=12}FAN SPEED ${hr 2}
+${font sans-serif:normal:size=8}Pump $alignc Radiator $alignr Chasis
+${exec sensors|grep "Pump Fan" | cut -d ':' -f2 | tr -s ' ' | cut -d ' ' -f2} $alignc ${exec sensors|grep "CPU Fan" | cut -d ':' -f2 | tr -s ' ' | cut -d ' ' -f2} $alignr ${exec sensors|grep "System Fan #6" | cut -d ':' -f2 | tr -s ' ' | cut -d ' ' -f2}
+
+${font sans-serif:bold:size=12}MEMORY ${hr 2}
+${font sans-serif:normal:size=8}RAM $alignc $mem / $memmax $alignr $memperc%
+${membar 4}
+SWAP $alignc ${swap} / ${swapmax} $alignr ${swapperc}%
+${swapbar 4}
+
+${font sans-serif:bold:size=12}DISK USAGE ${hr 2}
+${font sans-serif:normal:size=8}/Main $alignc ${fs_used /} / ${fs_size /} $alignr ${fs_used_perc /}%
+${fs_bar 4 /}
+${font sans-serif:normal:size=8}/Workspace $alignc ${fs_used /volume1} / ${fs_size /volume1} $alignr ${fs_used_perc /volume1}%
+${fs_bar 4 /volume1}
+
+${font sans-serif:bold:size=12}ARRAY ${hr 2}
+${font sans-serif:normal:size=8}md0 ${exec grep -A1 '^md0' /proc/mdstat | tail -1 | grep -oE '\[[U_]+\]'} $alignr ${if_match "${exec cat /sys/block/md0/md/degraded}" != "0"}${color red}DEGRADED ${exec grep -oE 'recovery = [0-9.]+%' /proc/mdstat}${color}${else}${color green}mirror ok${color}${endif}
+${font sans-serif:normal:size=8}NVMe ${alignr}${exec sensors 2>/dev/null | awk '/^nvme-pci/{c=substr($1,10)} /^Composite/{gsub(/[+°C]/,"",$2); printf "%s:%s ", c, $2}'}
+
+${font Ubuntu:bold:size=12}NETWORK ${hr 2}
+${font sans-serif:normal:size=8}Local IPs:${alignr}External IP:
+${execi 1000 ip a | grep inet | grep -vw lo | grep -v inet6 | grep -v wan0 | cut -d \/ -f1 | sed 's/[^0-9\.]*//g'}  ${alignr}${execi 1000  wget -q -O- http://ipecho.net/plain; echo}
+${font sans-serif:normal:size=8}External down: ${downspeed wan0}  ${alignr}External up: ${upspeed wan0} 
+${color lightgray}${downspeedgraph wan0 20,150 } ${alignr}${upspeedgraph wan0 20,150 }$color
+${font sans-serif:normal:size=8}Internal down: ${downspeed lan0}  ${alignr}Internal up: ${upspeed lan0} 
+${color lightgray}${downspeedgraph lan0 20,150 } ${alignr}${upspeedgraph lan0 20,150 }$color
+${font sans-serif:bold:size=12}TOP PROCESSES ${hr 2}
+${font sans-serif:normal:size=8}Name $alignr PID   CPU%   MEM%${font sans-serif:normal:size=6}
+${top name 1} $alignr ${top pid 1} ${top cpu 1}% ${top mem 1}%
+${top name 2} $alignr ${top pid 2} ${top cpu 2}% ${top mem 2}%
+${top name 3} $alignr ${top pid 3} ${top cpu 3}% ${top mem 3}%
+${top name 4} $alignr ${top pid 4} ${top cpu 4}% ${top mem 4}%
+${top name 5} $alignr ${top pid 5} ${top cpu 5}% ${top mem 5}%
+${top name 6} $alignr ${top pid 6} ${top cpu 6}% ${top mem 6}%
+${top name 7} $alignr ${top pid 7} ${top cpu 7}% ${top mem 7}%
+${top name 8} $alignr ${top pid 8} ${top cpu 8}% ${top mem 8}%
+${top name 9} $alignr ${top pid 9} ${top cpu 9}% ${top mem 9}%
+${top name 10} $alignr ${top pid 10} ${top cpu 10}% ${top mem 10}%
+]];
+

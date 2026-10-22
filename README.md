@@ -33,6 +33,8 @@ etc/systemd/network/10-wan0.link       stable name for the onboard port, by driv
 etc/udev/rules.d/99-nvme-tuning.rules  scheduler and md read-ahead (replaces the 2025 rule)
 etc/udev/rules.d/retired/              the 2025 rule, kept for the record
 caldigit-ts5-plus.md                   the dock on both boards
+desktop/conkyrc, desktop/conky.desktop conky configuration and its delayed autostart entry
+docs/wayland-desktop.md                Xwayland 24.1.10 crash and the held rebuild, conky under Wayland, release-upgrade effects, CPU split
 docs/board-swap.md                     moving the mirror and the network to a new board
 docs/2025-msi-edge-ti/                 the original tuning paper and sysctl.conf, superseded
 hardware/                              DKMS drivers for the Super I/O chip and the Realtek NIC
@@ -87,6 +89,10 @@ With one PCIe NIC and one onboard port, the bus-numbered names (`enp2s0`, `enp13
 - The NCT6687D/NCT6686D Super I/O driver and the Realtek r8126 driver are in `hardware/`. On the Nova the in-tree `r8169` drives the RTL8126, so only the sensor driver is needed there.
 - Modules are signed with a Machine Owner Key. The key lives in the board's NVRAM, so a board swap means either enrolling it again or running with Secure Boot off.
 - A release upgrade that keeps the same kernel version string (24.04's HWE 7.0.0-38 to 26.04's 7.0.0-38) does not trigger a DKMS rebuild, yet the modules fail to load with `disagrees about version of symbol module_layout`. Rebuild by hand: `dkms remove <module>/<version> -k $(uname -r)` then `dkms install`.
+
+## Desktop
+
+GNOME 50 on Wayland. The Xwayland shipped with 26.04 crashes on conky's window; the rebuilt 24.1.14 package, conky's stacking against the desktop-icons extension, what a release upgrade does to extensions and to Firefox and Thunderbird debs, and the CPU split between VirtualBox and a KVM-backed app are in `docs/wayland-desktop.md`.
 
 ## Verifying a boot
 

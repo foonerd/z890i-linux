@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Exec=sh -c "sleep 10; exec conky"
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name[en_GB]=Conky display
+Name=Conky display
+Comment[en_GB]=Conky display
+Comment=Conky display
