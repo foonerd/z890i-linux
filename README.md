@@ -28,6 +28,7 @@ Everything here was arrived at by running it. Several of the 2025 settings turne
 etc/default/grub                       kernel command line
 etc/fstab                              the mirror's mount line
 etc/mdadm/mdadm.conf                   array definition
+etc/msmtprc, etc/aliases               alert delivery: msmtp relay and the root alias
 etc/modprobe.d/mdadm.conf              md_mod start_ro
 etc/modprobe.d/nvme.conf               NVMe power-state latency cap
 etc/modules-load.d/sensors.conf        Super I/O sensor driver
@@ -69,7 +70,7 @@ GRUB_CMDLINE_LINUX_DEFAULT="quiet splash pcie_aspm.policy=performance pcie_port_
 - A new or replaced member gets its partition table copied from the survivor (`sgdisk -R /dev/new /dev/survivor && sgdisk -G /dev/new`) and is added with `mdadm --manage /dev/md0 --add`. Cap the resync with `dev.raid.speed_limit_max` (see the sysctl file); the kernel default of 200 MB/s is slow, the 2025 value of 10 GB/s let the source drive run at 1.3 GB/s until its controller stopped responding.
 - Never `--create --assume-clean` over members that hold data unless both are known identical.
 - `fstab` mounts the filesystem by UUID with `nofail`, so a boot with the array absent still completes. It deliberately has no `x-gvfs-show`: with it, the file manager lists the mirror as an ejectable volume.
-- `mdadm.conf` has `MAILADDR root`. That only helps if local mail is delivered somewhere; on a desktop without an MTA, mdadm's daily degraded-array warning and smartd's temperature warnings go to a `sendmail` that does not exist. Install a relay (msmtp-mta plus bsd-mailx or mailutils) before trusting either.
+- **Alerts must have somewhere to go.** On a desktop without an MTA, mdadm's daily degraded-array warning and smartd's temperature warnings are handed to a `sendmail` that does not exist, and an array ran degraded here for ten months unnoticed. `etc/msmtprc` and `etc/aliases` are the working setup: msmtp-mta relaying through an authenticated SMTP submission port, `root` aliased to the mailbox, `MAILADDR` in `mdadm.conf` and `-m` in `smartd.conf` set to it, the password in a root-only file read by `passwordeval`. Install `msmtp-mta` and `bsd-mailx` (smartd's runner needs `/usr/bin/mail`), then test all three paths: `echo test | mail -s test root`, `mdadm --monitor --scan --test --oneshot`, and smartd with `-M test` for one restart.
 
 ## udev: what was retired and why
 

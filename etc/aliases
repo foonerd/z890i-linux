@@ -1,0 +1,3 @@
+# /etc/aliases: everything the system addresses to root lands in the infrastructure mailbox.
+root: <alert-mailbox>
+default: <alert-mailbox>
