@@ -6,7 +6,7 @@ Ubuntu 26.04, GNOME 50, Wayland session, two 2560x1440 monitors side by side. Th
 
 Ubuntu 26.04 ships Xwayland 2:24.1.10-1. It has a NULL-pointer dereference in `damage_report()` (hw/xwayland/xwayland-window.c) that is hit when a client maps a window whose exposure is painted before Xwayland has attached its surface. conky with `own_window = true` does exactly that at session start. The effect is a login loop: Xwayland segfaults, conky dies with an X I/O error, gnome-session relaunches both, repeat. With conky out of autostart the session is fine, and plain X clients such as xeyes or xclock never trigger it.
 
-Upstream fixed it in Xwayland 24.1.11 (xserver merge request 2190, April 2026). Ubuntu tracks it as bug 2166607, with bug 2167539 asking for a newer Xwayland in 26.04; the next Ubuntu release already ships 2:24.1.14-1. Until the update reaches 26.04, the fix is to rebuild that package on 26.04 and hold it:
+Upstream fixed it in Xwayland 24.1.11 (xserver merge request 2190, April 2026). Ubuntu tracks it as bug 2166607, with bug 2167539 asking for a newer Xwayland in 26.04; the next Ubuntu release already ships 2:24.1.14-1. Until the update reaches 26.04, the fix is to rebuild that package on 26.04 and hold it. The built package, its debug symbols, the unmodified source, the build log and a step-by-step recipe are in `packages/xwayland/`. In short:
 
 ```
 # source of the newer package, verified against the xorg.freedesktop.org tarball

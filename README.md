@@ -38,6 +38,7 @@ docs/wayland-desktop.md                Xwayland 24.1.10 crash and the held rebui
 docs/board-swap.md                     moving the mirror and the network to a new board
 docs/2025-msi-edge-ti/                 the original tuning paper and sysctl.conf, superseded
 hardware/                              DKMS drivers for the Super I/O chip and the Realtek NIC
+packages/xwayland/                     Xwayland 2:24.1.14-1 rebuilt for 26.04: package, symbols, source, build log, recipe
 ```
 
 Identifiers in the configuration files (UUIDs, MAC addresses, serial numbers) are placeholders in angle brackets.
@@ -92,7 +93,7 @@ With one PCIe NIC and one onboard port, the bus-numbered names (`enp2s0`, `enp13
 
 ## Desktop
 
-GNOME 50 on Wayland. The Xwayland shipped with 26.04 crashes on conky's window; the rebuilt 24.1.14 package, conky's stacking against the desktop-icons extension, what a release upgrade does to extensions and to Firefox and Thunderbird debs, and the CPU split between VirtualBox and a KVM-backed app are in `docs/wayland-desktop.md`.
+GNOME 50 on Wayland. The Xwayland shipped with 26.04 crashes on conky's window; the rebuilt 24.1.14 package (`packages/xwayland/`, with the build recipe), conky's stacking against the desktop-icons extension, what a release upgrade does to extensions and to Firefox and Thunderbird debs, and the CPU split between VirtualBox and a KVM-backed app are in `docs/wayland-desktop.md`.
 
 ## Verifying a boot
 

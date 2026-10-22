@@ -1,0 +1,42 @@
+Format: 1.8
+Date: Wed, 07 Oct 2026 12:42:20 +0300
+Source: xwayland
+Binary: xwayland
+Built-For-Profiles: derivative.ubuntu noudeb
+Architecture: amd64
+Version: 2:24.1.14-1
+Distribution: unstable
+Urgency: medium
+Maintainer: Debian X Strike Force <debian-x@lists.debian.org>
+Changed-By: Timo Aaltonen <tjaalton@debian.org>
+Description:
+ xwayland   - X server for running X clients under Wayland
+Changes:
+ xwayland (2:24.1.14-1) unstable; urgency=medium
+ .
+   * Team upload.
+   * New upstream release.
+     - CVE-2026-88812: XKB SetGeometry TextDoodad Double Free
+     - CVE-2026-93515: Present Extension Cross-Window Notify Use-After-Free
+     - CVE-2026-93516: XInput Passive Grab modifierDevice Use-After-Free
+     - CVE-2026-93517: GLX RenderLarge Heap Buffer Overflow
+     - CVE-2026-93518: XKB ResizeKeyType Numeric Truncation
+     - CVE-2026-93519: XFixes Pointer Barrier Event List Buffer Overflow
+     - CVE-2026-93520: XKB ChangeKeycodeRange Heap Out-of-Bounds Write
+     - CVE-2026-93521: RandR ChangeProviderProperty Heap Buffer Overflow
+     - CVE-2026-93522: Glamor CopyArea CPU-FBO Heap Buffer Overflow
+     - CVE-2026-93523: XInput2 PassiveUngrabDevice Modifier Out-of-Bounds Write
+     - CVE-2026-93524: XKB SetMap Key Width/Action Count Desync Out-Of-Bounds Read
+     - CVE-2026-93536: GestureBuildSprite Use-After-Free
+Checksums-Sha1:
+ ee495faba5538e6a3e1501b7e74aa2f11386d932 3896776 xwayland-dbgsym_24.1.14-1_amd64.ddeb
+ 68602d571d2cf81e5b4392b85cd23695f490fc4e 12076 xwayland_24.1.14-1_amd64.buildinfo
+ 119b87799a7d5ff993d5cb05089c34b20a91b2bd 1007602 xwayland_24.1.14-1_amd64.deb
+Checksums-Sha256:
+ 6ae016b08a589a8b4f2903ef4cb4f27e052f76753223038d164b9921a99002cd 3896776 xwayland-dbgsym_24.1.14-1_amd64.ddeb
+ 8829fac40a716e44aa3db7e4fa6b80d2d90b0505eff90fc9c27a207343e2e785 12076 xwayland_24.1.14-1_amd64.buildinfo
+ 53aaddd140cfb70626bae58f2a3a4bd42cd3635709711c1dc147a876b41aa1ef 1007602 xwayland_24.1.14-1_amd64.deb
+Files:
+ a1c268b275d8ab415f358aaa7847b197 3896776 debug optional xwayland-dbgsym_24.1.14-1_amd64.ddeb
+ 6f2f413093f3d76a6d99152b8f41e26d 12076 x11 optional xwayland_24.1.14-1_amd64.buildinfo
+ 6ef602327a529150571cd1579c66475e 1007602 x11 optional xwayland_24.1.14-1_amd64.deb
