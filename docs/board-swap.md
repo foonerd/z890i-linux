@@ -45,3 +45,13 @@ With the write-intent bitmap already on the array, a member that merely dropped 
 - The DKMS modules may need a manual rebuild even when the kernel version string is unchanged (`hardware/README.md`).
 - Integrated versus discrete Thunderbolt is a different driver path for a dock (`caldigit-ts5-plus.md`).
 - The desktop file manager presents an fstab mount as an ejectable volume if the entry carries `x-gvfs-show`; remove the option and use a bookmark.
+
+## Offloading home directories: what not to symlink
+
+Before the upgrade, large directories were moved off the system drive and replaced by symlinks into the mirror, so the backup image of the root disk stayed small. That works for toolchain caches (`~/.cargo`, `~/.rustup`, `~/.npm`, `~/.nvm`, `~/.gradle`) and for bulk data. It does not work for the state directory of any application that runs a sandbox or a virtual machine:
+
+- Claude Desktop's Cowork VM refused to start with `open .../.config/Claude/claude-code-vm/<ver>/claude: too many levels of symbolic links`. The helper opens the binary with symlink-free path resolution, so a single symlink anywhere in the path fails with that error, which is the kernel's `RESOLVE_NO_SYMLINKS` result, not an actual loop.
+- Cursor's `~/.cursor` behaved the same way under its AppArmor-confined sandbox.
+
+Move such directories back as real directories (`rsync -aHAX`, verify with `rsync -n --checksum`, then swap), and keep the offload for caches and data only. A bind mount instead of a symlink would not have helped either; virtiofs does not share it into the VM.
+
